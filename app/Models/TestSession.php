@@ -30,4 +30,10 @@ class TestSession extends Model
     {
         return $this->hasMany(KraepelinAnswer::class);
     }
+
+    public function answers(): HasMany
+    {
+        // Pastikan nama modelnya sesuai, misal KraepelinAnswer::class
+        return $this->hasMany(KraepelinAnswer::class);
+    }
 }

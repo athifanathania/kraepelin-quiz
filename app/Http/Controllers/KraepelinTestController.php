@@ -186,7 +186,7 @@ class KraepelinTestController extends Controller
             'totalAnswered' => $totalAnswered,
             'totalCorrect'  => $totalCorrect,
             'totalWrong'    => $totalWrong,
-            'secondsPerColumn' => 30,
+            'secondsPerColumn' => 15,
         ]);
     }
 

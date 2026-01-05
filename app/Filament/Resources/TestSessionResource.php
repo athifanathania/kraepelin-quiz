@@ -11,6 +11,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Collection;
+use App\Support\KraepelinTemplate;
 
 class TestSessionResource extends Resource
 {
@@ -18,7 +19,11 @@ class TestSessionResource extends Resource
 
     protected static ?string $navigationIcon  = 'heroicon-o-clipboard-document-check';
     protected static ?string $navigationGroup = 'Hasil Tes';
-    protected static ?string $navigationLabel = 'Riwayat Tes Kraepelin';
+    
+    protected static ?string $navigationLabel = 'Riwayat Tes Kraepelin'; 
+    protected static ?string $pluralModelLabel = 'Riwayat Tes Kraepelin';
+    protected static ?string $modelLabel = 'Riwayat Tes'; 
+
     protected static ?int    $navigationSort  = 20;
 
     public static function form(Forms\Form $form): Forms\Form
@@ -123,35 +128,71 @@ class TestSessionResource extends Resource
                         $record->update(['can_retake' => true]);
                     }),
 
-                // === DETAIL HASIL KRAEPELIN DALAM MODAL ===
-                Action::make('viewKraepelinResult')
-                    ->label('Detail hasil')
-                    ->icon('heroicon-o-chart-bar')
-                    ->color('primary')
-                    ->visible(fn (TestSession $record) =>
-                        $record->test?->code === 'KRAEPELIN'
-                    )
-                    ->modalHeading('Hasil Tes Kraepelin')
+                // Action 1: GRAFIK HASIL (Ringan, hanya load summary)
+                Action::make('viewChart')
+                    ->label('Grafik')
+                    ->icon('heroicon-o-presentation-chart-line')
+                    ->color('info') // Warna biru
+                    ->visible(fn (TestSession $record) => $record->test?->code === 'KRAEPELIN')
+                    ->modalHeading('Grafik Stabilitas Kerja')
                     ->modalWidth('7xl')
-                    ->modalSubmitAction(false)                 
-                    ->modalCancelActionLabel('Tutup')          
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
                     ->modalContent(function (TestSession $record) {
                         $perColumn = $record->kraepelinAnswers()
                             ->selectRaw('
                                 column_index,
-                                SUM(CASE WHEN user_answer IS NOT NULL THEN 1 ELSE 0 END) AS answered,
-                                SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END)        AS correct,
-                                SUM(CASE WHEN is_correct = 0 THEN 1 ELSE 0 END)        AS wrong
+                                
+                                /* Menghitung kotak yang SUDAH DIISI saja (tidak null) */
+                                SUM(CASE WHEN user_answer IS NOT NULL THEN 1 ELSE 0 END) as answered,
+
+                                /* Menghitung jawaban Benar */
+                                SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct,
+
+                                /* Menghitung jawaban Salah (hanya jika sudah diisi) */
+                                SUM(CASE WHEN is_correct = 0 AND user_answer IS NOT NULL THEN 1 ELSE 0 END) as wrong
                             ')
                             ->groupBy('column_index')
                             ->orderBy('column_index')
                             ->get();
 
-                        return view('filament.modals.kraepelin-result', [
+                        return view('filament.modals.kraepelin-chart', [
                             'record'    => $record,
                             'perColumn' => $perColumn,
                         ]);
                     }),
+
+                // Action 2: DETAIL VISUALISASI (Lebih detail, load per kotak)
+                Action::make('viewVisual') // Sesuaikan nama action-nya jika beda
+                    ->label('Detail Visual')
+                    ->icon('heroicon-o-eye')
+                    ->modalContent(function ($record) {
+                        // 1. Ambil jawaban user menggunakan method answers()->get() agar tidak null
+                        $answersByColumn = $record->answers()->get()->groupBy('column_index');
+
+                        // 2. LOGIC INJECT ANGKA SOAL
+                        foreach ($answersByColumn as $colIndex => $answers) {
+                            // Ambil kunci jawaban asli dari Template
+                            $sourceNumbers = KraepelinTemplate::getColumnChain((int)$colIndex);
+
+                            foreach ($answers as $index => $ans) {
+                                // Pastikan index ada di range soal
+                                if (isset($sourceNumbers[$index]) && isset($sourceNumbers[$index + 1])) {
+                                    $ans->bottom_number = $sourceNumbers[$index];     // Angka Bawah
+                                    $ans->top_number    = $sourceNumbers[$index + 1]; // Angka Atas
+                                } else {
+                                    $ans->bottom_number = '?';
+                                    $ans->top_number = '?';
+                                }
+                            }
+                        }
+
+                        // 3. Return View
+                        return view('filament.modals.kraepelin-visual', [
+                            'answersByColumn' => $answersByColumn,
+                        ]);
+                    })
+                    ->modalWidth('7xl'),
                 Tables\Actions\EditAction::make()->label(''),
                 Tables\Actions\DeleteAction::make()
                     ->label('')
