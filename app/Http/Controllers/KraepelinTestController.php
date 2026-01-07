@@ -388,4 +388,25 @@ class KraepelinTestController extends Controller
             'accuracy'       => $accuracy,
         ]);
     }
+
+    public function resetTest($sessionId)
+    {
+        $session = TestSession::findOrFail($sessionId);
+
+        $this->ensureOwnedByCurrentUser($session);
+
+        if ($session->status === 'finished') {
+             return redirect()->back()->with('error', 'Tes yang sudah selesai tidak bisa di-reset.');
+        }
+
+        \App\Models\KraepelinAnswer::where('test_session_id', $session->id)
+            ->update([
+                'user_answer' => null,
+                'is_correct'  => null,
+                'answered_at' => null
+            ]);
+
+        return redirect()->route('kraepelin.show', $session->id)
+                         ->with('success', 'Tes berhasil di-reset ke awal.');
+    }
 }

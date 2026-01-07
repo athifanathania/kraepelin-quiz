@@ -9,7 +9,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
+use Filament\Support\Colors\Color; // Pastikan ini ter-import
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -18,6 +18,9 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Support\Facades\FilamentView;
+use Illuminate\Support\Facades\Blade;
+use Filament\View\PanelsRenderHook;
+use App\Filament\Auth\CustomLogin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -27,10 +30,15 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(CustomLogin::class)
+            // 1. GANTI NAMA BRAND (Biar gak tulisan 'Laravel')
+            ->brandName('HR Admin Panel') 
+            
+            // 2. GANTI WARNA JADI UNGU (Sesuai request)
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Purple, 
             ])
+            
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -60,6 +68,16 @@ class AdminPanelProvider extends PanelProvider
                 'panels::body.end',
                 fn () => view('filament.partials.chartjs')
             )
-            ;
+            ->renderHook(
+                PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
+                fn (): string => Blade::render('
+                    <div class="mt-4 text-center">
+                        {{-- 3. GANTI HOVER WARNA JADI UNGU JUGA --}}
+                        <a href="/" class="text-sm text-gray-500 hover:text-purple-600 underline transition">
+                            ← Kembali ke Halaman Utama
+                        </a>
+                    </div>
+                ')
+            );
     }
 }

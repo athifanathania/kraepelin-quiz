@@ -2,30 +2,43 @@
 
 use App\Http\Controllers\KraepelinTestController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
-// Root: kalau sudah login → ke dashboard psikotes, kalau belum → login
+// 1. HALAMAN UTAMA (ROOT)
+// Kalau sudah login → ke dashboard psikotes, kalau belum → login
 Route::get('/', function () {
     return auth()->check()
         ? redirect()->route('psikotes.dashboard')
         : redirect()->route('login');
 });
 
-// /dashboard (default Breeze) diarahkan ke dashboard psikotes
+// 2. REDIRECT DEFAULT BREEZE
+// /dashboard diarahkan ke dashboard psikotes
 Route::get('/dashboard', function () {
     return redirect()->route('psikotes.dashboard');
 })->middleware(['auth'])->name('dashboard');
 
-// Semua route di bawah ini wajib login
+// 3. LOGIC PINDAH KE ADMIN (LOGOUT USER BIASA)
+Route::get('/switch-to-admin', function () {
+    Auth::logout(); // Logout user saat ini
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+    
+    return redirect('/admin/login'); // Arahkan ke login admin
+})->name('switch.to.admin');
+
+
+// 4. ROUTE YANG WAJIB LOGIN (USER AREA)
 Route::middleware('auth')->group(function () {
 
-    // DASHBOARD PSIKOTES (halaman selamat datang)
+    // DASHBOARD PSIKOTES (Halaman Selamat Datang)
     Route::get('/psikotes', function () {
         return view('psikotes.dashboard');
     })->name('psikotes.dashboard');
 
-    // Prefix URL jadi /psikotes/..., tapi NAMA route tetap kraepelin.*
+    // GROUP ROUTE KRAEPELIN
     Route::prefix('psikotes')->group(function () {
-
+        
         Route::get('/kraepelin', [KraepelinTestController::class, 'index'])
             ->name('kraepelin.index');
 
@@ -43,12 +56,14 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/kraepelin/{session}/hasil', [KraepelinTestController::class, 'result'])
             ->name('kraepelin.result');
+
+        // Route Debug (Saya masukkan ke sini biar aman, hanya user login yg bisa akses)
+        Route::get('/kraepelin/debug/col/{col}', [KraepelinTestController::class, 'debugColumn'])
+            ->name('kraepelin.debug.col');
+        
+        Route::post('/kraepelin/{session}/reset', [KraepelinTestController::class, 'resetTest'])->name('kraepelin.reset');
     });
 });
-
-// Route debug (opsional)
-Route::get('/kraepelin/debug/col/{col}', [KraepelinTestController::class, 'debugColumn'])
-    ->name('kraepelin.debug.col');
 
 // Route auth dari Breeze
 require __DIR__.'/auth.php';
