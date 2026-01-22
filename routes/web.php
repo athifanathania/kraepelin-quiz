@@ -5,11 +5,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
 // 1. HALAMAN UTAMA (ROOT)
-// Kalau sudah login → ke dashboard psikotes, kalau belum → login
+// Menampilkan halaman Welcome (Landing Page)
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('psikotes.dashboard')
-        : redirect()->route('login');
+    return view('welcome');
 });
 
 // 2. REDIRECT DEFAULT BREEZE
@@ -60,8 +58,8 @@ Route::middleware('auth')->group(function () {
         // Route Debug (Saya masukkan ke sini biar aman, hanya user login yg bisa akses)
         Route::get('/kraepelin/debug/col/{col}', [KraepelinTestController::class, 'debugColumn'])
             ->name('kraepelin.debug.col');
-        
         Route::post('/kraepelin/{session}/reset', [KraepelinTestController::class, 'resetTest'])->name('kraepelin.reset');
+        Route::delete('/test/{session}/cancel', [KraepelinTestController::class, 'cancel'])->name('kraepelin.cancel');
     });
 });
 

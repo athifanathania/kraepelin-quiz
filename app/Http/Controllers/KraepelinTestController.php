@@ -393,6 +393,10 @@ class KraepelinTestController extends Controller
     {
         $session = TestSession::findOrFail($sessionId);
 
+        if (auth()->user()->role !== 'admin' && auth()->user()->role !== 'hrd') {
+            abort(403, 'Tindakan tidak diizinkan. Hanya Admin/HRD yang bisa mereset tes.');
+        }
+
         $this->ensureOwnedByCurrentUser($session);
 
         if ($session->status === 'finished') {
@@ -408,5 +412,17 @@ class KraepelinTestController extends Controller
 
         return redirect()->route('kraepelin.show', $session->id)
                          ->with('success', 'Tes berhasil di-reset ke awal.');
+    }
+
+    public function cancel(TestSession $session)
+    {
+        if ($session->user_id !== auth()->id()) {
+            abort(403);
+        }
+        
+        $session->delete();
+
+        return redirect()->route('psikotes.dashboard') 
+            ->with('success', 'Tes berhasil dibatalkan.');
     }
 }

@@ -209,32 +209,66 @@
     <footer class="mt-8 mb-8 text-center px-4 space-y-4">
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
             
-            {{-- Tombol Selesaikan (Tetap, atau mau dipercantik juga boleh dengan cara serupa) --}}
-            <a href="{{ route('kraepelin.finish', $session) }}" 
-            class="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 hover:text-slate-900 transition shadow-sm w-full sm:w-auto"
-            onclick="event.preventDefault(); confirmFinish(this.href);">
-                Selesaikan Tes
-            </a>
-            
-            {{-- TOMBOL RESET --}}
-            {{-- Beri ID pada form agar bisa di-submit lewat JS --}}
-            <form id="form-reset-test" action="{{ route('kraepelin.reset', $session->id) }}" method="POST" class="w-full sm:w-auto">
+            {{-- 1. TOMBOL BATALKAN (Merah) --}}
+            <form id="form-cancel-test" action="{{ route('kraepelin.cancel', $session->id) }}" method="POST" class="w-full sm:w-auto">
                 @csrf
-                {{-- Ubah type="button" agar tidak langsung submit --}}
-                {{-- Hapus onclick="return confirm..." yang lama --}}
-                {{-- Tambahkan onclick="confirmReset()" --}}
+                @method('DELETE') {{-- Gunakan Method DELETE agar semantik --}}
                 <button type="button" 
-                        onclick="confirmReset()"
-                        class="w-full sm:w-auto px-6 py-3 bg-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-300 hover:text-red-600 hover:bg-red-50 transition text-xs shadow-sm">
-                    Reset / Ulang (Dev)
+                        onclick="confirmCancel()"
+                        class="w-full sm:w-auto px-6 py-3 bg-red-50 border border-red-200 text-red-600 font-semibold rounded-xl hover:bg-red-600 hover:text-white transition shadow-sm">
+                    Batalkan Tes
                 </button>
             </form>
+
+            {{-- 2. TOMBOL RESET (Hanya muncul jika user adalah Admin atau HRD) --}}
+            @if(auth()->user()->role === 'admin' || auth()->user()->role === 'hrd') 
+                
+                <form id="form-reset-test" action="{{ route('kraepelin.reset', $session->id) }}" method="POST" class="w-full sm:w-auto">
+                    @csrf
+                    <button type="button" 
+                            onclick="confirmReset()"
+                            class="w-full sm:w-auto px-6 py-3 bg-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-300 transition text-xs shadow-sm flex items-center justify-center gap-2">
+                        
+                        {{-- Ikon Gembok Terbuka (Opsional, biar terlihat ini fitur khusus) --}}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                        
+                        Reset (Admin/HRD)
+                    </button>
+                </form>
+
+            @endif
+
+            {{-- 3. TOMBOL SELESAIKAN (Putih/Utama) --}}
+            <a href="{{ route('kraepelin.finish', $session) }}" 
+               class="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 hover:text-slate-900 transition shadow-sm w-full sm:w-auto ring-1 ring-slate-200"
+               onclick="event.preventDefault(); confirmFinish(this.href);">
+                Selesaikan Tes
+            </a>
 
         </div>
     </footer>
 
     {{-- SCRIPT --}}
     <script>
+        // FUNGSI UNTUK TOMBOL BATALKAN
+        function confirmCancel() {
+            Swal.fire({
+                title: 'Batalkan Tes?',
+                text: "Sesi ini akan dihapus permanen dan tidak akan disimpan di sistem.",
+                icon: 'error', // Ikon silang merah
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626', // Red-600
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Ya, Batalkan & Hapus',
+                cancelButtonText: 'Kembali Mengerjakan',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('form-cancel-test').submit();
+                }
+            });
+        }
+
         // FUNGSI UNTUK TOMBOL RESET
         function confirmReset() {
             Swal.fire({

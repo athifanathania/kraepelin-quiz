@@ -26,7 +26,7 @@
                 <div class="h-8 w-8 rounded-lg bg-orange-500 text-white flex items-center justify-center text-xs font-bold shadow-md shadow-orange-200">
                     HR
                 </div>
-                <span class="font-bold text-slate-800">Online Test</span>
+                <span class="font-bold text-slate-800">Online HR Test</span>
             </div>
             {{-- Tombol Buka Sidebar --}}
             <button id="mobile-menu-btn" class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg focus:outline-none">
