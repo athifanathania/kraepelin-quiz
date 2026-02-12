@@ -15,7 +15,7 @@
                     </div>
 
                     <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
-                        Selamat datang di <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-fuchsia-600">Online HR Test</span>
+                        Selamat datang di <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-fuchsia-600">Recruitment Tes PT. Indomatsumoto P&D</span>
                     </h1>
 
                     <p class="text-slate-600 mt-2 text-sm sm:text-[15px] leading-relaxed max-w-2xl">

@@ -26,7 +26,7 @@
                 <div class="h-8 w-8 rounded-lg bg-orange-500 text-white flex items-center justify-center text-xs font-bold shadow-md shadow-orange-200">
                     HR
                 </div>
-                <span class="font-bold text-slate-800">Online HR Test</span>
+                <span class="font-bold text-slate-800">Recruitment Tes PT. Indomatsumoto P&D</span>
             </div>
             {{-- Tombol Buka Sidebar --}}
             <button id="mobile-menu-btn" class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg focus:outline-none">
@@ -43,14 +43,17 @@
             {{-- Header Sidebar --}}
             <div class="px-6 h-16 lg:h-auto py-4 lg:py-6 border-b border-slate-100 flex items-center gap-3 justify-between lg:justify-start">
                 <div class="flex items-center gap-3">
-                    <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center text-sm font-bold shadow-lg shadow-orange-200">
+                    <div class="h-10 w-10 flex-shrink-0 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center text-sm font-bold shadow-lg shadow-orange-200">
                         HR
                     </div>
                     <div>
-                        <h1 class="text-base font-bold text-slate-800 leading-tight">
-                            Online HR Test
+                        <h1 class="text-sm font-bold text-slate-800 leading-snug">
+                            Recruitment Tes <br>
+                            <span class="text-slate-600 font-semibold">
+                                PT. Indomatsumoto P&D
+                            </span>
                         </h1>
-                        <p class="text-[10px] text-slate-400 font-medium truncate w-32">
+                        <p class="text-[11px] text-slate-400 font-medium">
                             {{ auth()->user()->name ?? 'Guest User' }}
                         </p>
                     </div>

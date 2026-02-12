@@ -1,6 +1,5 @@
 @php 
     /** @var \App\Models\TestSession $record */
-    // Kita tetap butuh data ini untuk Grafik & Header
     $labels   = $perColumn->pluck('column_index')->map(fn ($i) => 'Kolom '.$i);
     $correct  = $perColumn->pluck('correct');
 
@@ -13,9 +12,14 @@
     $totalColumns   = $perColumn->count(); 
     $totalTarget    = $boxesPerColumn * $totalColumns;
 
-    $computedAccuracy = $totalTarget > 0
-        ? round(($totalCorrect / $totalTarget) * 100)
-        : null;
+    $totalAttempted = $totalCorrect + $totalWrong;
+
+    // Rumus Akurasi: (Benar / Total Usaha) * 100
+    $computedAccuracy = $totalAttempted > 0
+        ? round(($totalCorrect / $totalAttempted) * 100) // Bisa tambah , 1 atau , 2 jika mau desimal
+        : 0;
+    
+    $startedAt = $record->started_at ?? $record->created_at;
 @endphp
 
 <style>
@@ -55,17 +59,24 @@
         display: grid;
         gap: 10px;
     }
+
+    /* --- PENGATURAN LAYOUT DESKTOP --- */
     @media (min-width: 768px) {
         .kraepelin-header-main {
             display: grid;
-            grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr);
+            /* Ubah rasio kolom: Kiri lebih kecil, Kanan (statistik) lebih lebar */
+            grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
             gap: 18px;
             align-items: stretch;
         }
         .kraepelin-stat-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            /* DISINI PERUBAHANNYA: */
+            /* Ubah dari 3 menjadi 4 agar Target, Diisi, Benar, Salah jadi sebaris */
+            grid-template-columns: repeat(4, minmax(0, 1fr));
         }
     }
+
+    /* --- PENGATURAN LAYOUT HP (MOBILE) --- */
     @media (max-width: 767px) {
         .kraepelin-header-main {
             display: grid;
@@ -73,6 +84,7 @@
             gap: 14px;
         }
         .kraepelin-stat-grid {
+            /* Di HP tetap 2x2 agar tidak kekecilan */
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
@@ -93,12 +105,12 @@
         <div class="flex items-start justify-between gap-3">
             <div>
                 <p class="kraepelin-header-title">Hasil Tes Kraepelin</p>
-                <p class="mt-0.5 text-sm font-semibold text-slate-900">
+                <!-- <p class="mt-0.5 text-sm font-semibold text-slate-900">
                     {{ $record->user?->name ?? '—' }}
                 </p>
                 <p class="text-[11px] text-slate-500">
                     {{ $record->user?->email ?? '—' }}
-                </p>
+                </p> -->
             </div>
             <div class="flex flex-col items-end gap-1 text-[11px]">
                 <span class="kraepelin-chip">
@@ -116,23 +128,50 @@
 
         {{-- Info Peserta & Stats --}}
         <div class="kraepelin-header-main mt-4">
-            {{-- Kiri --}}
-            <div class="space-y-3">
-                <div class="rounded-xl bg-white/80 px-3.5 py-2.5">
-                    <p class="text-[10px] font-semibold text-slate-500 uppercase">Peserta</p>
-                    <p class="mt-0.5 text-[13px] font-semibold text-slate-900">{{ $record->user?->name ?? '—' }}</p>
+            {{-- Kiri (Info Peserta) --}}
+            <div class="space-y-2">
+                {{-- Info Peserta --}}
+                <div class="rounded-xl bg-white/80 px-4 py-2.5 border border-slate-200 text-[12px]">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-slate-400 uppercase text-[10px] font-semibold tracking-wide">
+                            Peserta
+                        </span>
+                        <span class="font-semibold text-slate-900">
+                            {{ $record->user?->name ?? '—' }}
+                        </span>
+                    </div>
+                    <div class="text-slate-500 text-[11px]">
+                        {{ $record->user?->email ?? '—' }}
+                    </div>
                 </div>
-                <div class="rounded-xl bg-white/80 px-3.5 py-2.5">
-                    <p class="text-[10px] font-semibold text-slate-500 uppercase">Tes</p>
-                    <p class="mt-0.5 text-[13px] font-semibold text-slate-900">
-                        {{ $record->test?->name }} ({{ $record->test?->code }})
-                    </p>
+
+                {{-- Info Tes + Timestamp --}}
+                <div class="rounded-xl bg-white/80 px-4 py-2.5 border border-slate-200 text-[12px]">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-slate-400 uppercase text-[10px] font-semibold tracking-wide">
+                            Tes
+                        </span>
+                        <span class="font-semibold text-slate-900">
+                            {{ $record->test?->name }} ({{ $record->test?->code }})
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between mt-1 text-[11px]">
+                        <span class="text-slate-400 uppercase text-[10px] font-semibold tracking-wide">
+                            Mulai
+                        </span>
+                        <span class="text-slate-600">
+                            {{ optional($startedAt)->format('d-m-Y') ?? '—' }}
+                            <span class="text-slate-400 ml-1">
+                                {{ optional($startedAt)->format('H:i') ?? '' }}
+                            </span>
+                        </span>
+                    </div>
                 </div>
             </div>
-
-            {{-- Kanan Stats --}}
+            {{-- Kanan (Statistik 4 Kotak Sebaris) --}}
             <div class="kraepelin-stat-grid text-[11px]">
-                {{-- Harus Diisi --}}
+                {{-- Target --}}
                 <div class="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5">
                     <p class="text-[10px] font-semibold text-slate-500 uppercase">Target</p>
                     <p class="mt-0.5 text-lg font-semibold text-slate-900 leading-none">{{ $totalTarget }}</p>
@@ -148,7 +187,13 @@
                 <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-3.5 py-2.5">
                     <p class="text-[10px] font-semibold text-emerald-700 uppercase">Benar</p>
                     <p class="mt-0.5 text-lg font-semibold text-emerald-700 leading-none">{{ $totalCorrect }}</p>
-                    <p class="mt-0.5 text-[10px] text-emerald-700/80">Jawaban Tepat</p>
+                    <p class="mt-0.5 text-[10px] text-emerald-700/80">Jawaban benar</p>
+                </div>
+                {{-- Salah --}}
+                <div class="rounded-xl border border-rose-100 bg-rose-50 px-3.5 py-2.5">
+                    <p class="text-[10px] font-semibold text-rose-700 uppercase">Salah</p>
+                    <p class="mt-0.5 text-lg font-semibold text-rose-700 leading-none">{{ $totalWrong }}</p>
+                    <p class="mt-0.5 text-[10px] text-rose-700/80">Jawaban salah</p>
                 </div>
             </div>
         </div>
@@ -184,8 +229,6 @@
                 },
                 options: {
                     responsive: true,
-                    
-                    // --- FITUR HOVER BARU (Tetap ada) ---
                     interaction: {
                         mode: 'index',      
                         intersect: false,   
@@ -194,21 +237,17 @@
                         mode: 'index',
                         intersect: false
                     },
-                    // ------------------------------------
-
                     scales: {
                         x: { 
                             title: { display: true, text: 'Kolom' },
-                            // SAYA HAPUS 'grid: { display: false }' agar garis vertikal muncul lagi
                             grid: { 
                                 display: true,
-                                color: 'rgba(0,0,0,0.05)' // Warna grid halus
+                                color: 'rgba(0,0,0,0.05)' 
                             } 
                         },
                         y: { 
                             beginAtZero: true, 
                             ticks: { precision: 0 },
-                            // SAYA HAPUS 'border: { dash: ... }' agar garis horizontal jadi solid (tegas) lagi
                             grid: { 
                                 display: true,
                                 color: 'rgba(0,0,0,0.05)' 

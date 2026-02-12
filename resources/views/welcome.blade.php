@@ -56,7 +56,7 @@
 
                 {{-- Headings --}}
                 <h1 class="text-3xl font-bold text-slate-800 tracking-tight mb-2">
-                    HR Recruitment
+                    Recruitment Tes 
                 </h1>
                 <p class="text-slate-500 font-medium text-sm mb-8 leading-relaxed">
                     PT. Indomatsumoto Press & Dies Industries.<br>

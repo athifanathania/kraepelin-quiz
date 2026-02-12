@@ -8,6 +8,8 @@ use App\Models\TestSession;
 use App\Models\KraepelinAnswer;
 use Illuminate\Http\Request;
 use App\Support\KraepelinTemplate;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Auth;
 
 class KraepelinTestController extends Controller
 {
@@ -424,5 +426,75 @@ class KraepelinTestController extends Controller
 
         return redirect()->route('psikotes.dashboard') 
             ->with('success', 'Tes berhasil dibatalkan.');
+    }
+
+    public function exportPdf(TestSession $session)
+    {
+        $user = Auth::user();
+        
+        $isOwner = $session->user_id === $user->id;
+        $isAdmin = in_array($user->role, ['admin', 'hrd']); 
+
+        if (! $isOwner && ! $isAdmin) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $answers = $session->kraepelinAnswers()
+            ->orderBy('column_index')
+            ->orderBy('row_index') 
+            ->get();
+
+        $grid = [];
+        $stats = [];
+        
+        $fixedRows = 27; 
+        $fixedCols = 50; 
+
+        $totalAnswered = 0;
+        $totalCorrect  = 0;
+        $totalWrong    = 0;
+
+        foreach ($answers as $answer) {
+            $r = $answer->row_index;
+            $c = $answer->column_index;
+
+            $grid[$r][$c] = $answer;
+
+            if (!isset($stats[$c])) {
+                $stats[$c] = ['correct' => 0, 'wrong' => 0, 'answered' => 0];
+            }
+
+            if (!is_null($answer->user_answer)) {
+                $stats[$c]['answered']++;
+                $totalAnswered++;
+
+                if ($answer->is_correct) {
+                    $stats[$c]['correct']++;
+                    $totalCorrect++;
+                } else {
+                    $stats[$c]['wrong']++;
+                    $totalWrong++;
+                }
+            }
+        }
+        
+        $accuracy = $totalAnswered > 0 ? round(($totalCorrect / $totalAnswered) * 100) : 0;
+
+        $pdf = Pdf::loadView('kraepelin.pdf-export', [
+            'session'       => $session,
+            'grid'          => $grid,
+            'stats'         => $stats,
+            'maxRow'        => $fixedRows,
+            'maxCol'        => $fixedCols,
+            'totalAnswered' => $totalAnswered,
+            'totalCorrect'  => $totalCorrect,
+            'totalWrong'    => $totalWrong,
+            'accuracy'      => $accuracy,
+        ])->setPaper('a4', 'landscape');
+
+        // Nama file PDF
+        $fileName = 'Hasil-Kraepelin-' . $session->user->name . '-' . $session->created_at->format('d-m-Y') . '.pdf';
+
+        return $pdf->download($fileName);
     }
 }

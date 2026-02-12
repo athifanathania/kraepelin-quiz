@@ -8,10 +8,8 @@ use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Actions\Action;
-use Illuminate\Database\Eloquent\Collection;
-use App\Support\KraepelinTemplate;
+use Illuminate\Database\Eloquent\Builder;
 
 class TestSessionResource extends Resource
 {
@@ -37,9 +35,10 @@ class TestSessionResource extends Resource
                     ->relationship('user', 'name')
                     ->disabled(),
                 Forms\Components\TextInput::make('status')->disabled(),
-                Forms\Components\TextInput::make('answered_count')->disabled(),
-                Forms\Components\TextInput::make('correct_count')->disabled(),
-                Forms\Components\TextInput::make('wrong_count')->disabled(),
+                // Field statistik di form ini opsional ditampilkan karena kita hitung ulang di tabel
+                Forms\Components\TextInput::make('answered_count')->disabled()->label('Total Dijawab'),
+                Forms\Components\TextInput::make('correct_count')->disabled()->label('Benar'),
+                Forms\Components\TextInput::make('wrong_count')->disabled()->label('Salah'),
                 Forms\Components\Toggle::make('can_retake')
                     ->label('Izinkan peserta mengulang tes ini'),
             ]);
@@ -51,60 +50,75 @@ class TestSessionResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('started_at')
                     ->label('Mulai')
-                    ->dateTime('d-m-Y H:i')
+                    ->formatStateUsing(fn ($state) => 
+                        $state->format('d-m-Y') . '<br><span class="text-gray-400 text-xs">' . $state->format('H:i') . '</span>'
+                    )
+                    ->html() 
                     ->sortable()
                     ->searchable(),
+
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Peserta')
+                    ->wrap()
+                    ->extraAttributes(['style' => 'max-width: 140px;'])
                     ->sortable()
                     ->searchable(),
+
                 Tables\Columns\TextColumn::make('test.name')
                     ->label('Tes')
                     ->sortable(),
+
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'warning' => 'in_progress',
                         'success' => 'finished',
                     ]),
-                Tables\Columns\TextColumn::make('answered_count')
+
+                Tables\Columns\TextColumn::make('filled_real')
                     ->label('Diisi')
-                    ->alignRight(),
-                Tables\Columns\TextColumn::make('correct_count')
+                    ->alignRight()
+                    ->getStateUsing(function (TestSession $record) {
+                        if ($record->test?->code !== 'KRAEPELIN') return $record->kraepelinAnswers()->count();
+                        return $record->kraepelinAnswers()->whereNotNull('user_answer')->count();
+                    }),
+
+                Tables\Columns\TextColumn::make('correct_real')
                     ->label('Benar')
                     ->alignRight()
-                    ->color('success'),
-                Tables\Columns\TextColumn::make('wrong_count')
+                    ->color('success')
+                    ->getStateUsing(function (TestSession $record) {
+                        if ($record->test?->code !== 'KRAEPELIN') return $record->correct_count;
+                        return $record->kraepelinAnswers()->where('is_correct', 1)->count();
+                    }),
+
+                Tables\Columns\TextColumn::make('wrong_real')
                     ->label('Salah')
                     ->alignRight()
-                    ->color('danger'),
-                Tables\Columns\TextColumn::make('accuracy')
+                    ->color('danger')
+                    ->getStateUsing(function (TestSession $record) {
+                        if ($record->test?->code !== 'KRAEPELIN') return $record->wrong_count;
+                        return $record->kraepelinAnswers()
+                            ->whereNotNull('user_answer')
+                            ->where('is_correct', 0)
+                            ->count();
+                    }),
+
+                Tables\Columns\TextColumn::make('accuracy_real')
                     ->label('Akurasi')
                     ->alignRight()
-                    ->sortable()
                     ->getStateUsing(function (TestSession $record) {
-                        // Kalau bukan tes Kraepelin, pakai nilai lama saja
-                        if ($record->test?->code !== 'KRAEPELIN') {
-                            return $record->accuracy;
-                        }
+                        if ($record->test?->code !== 'KRAEPELIN') return $record->accuracy;
+                        
+                        $correct = $record->kraepelinAnswers()->where('is_correct', 1)->count();
+                        $filled = $record->kraepelinAnswers()->whereNotNull('user_answer')->count();
 
-                        // Total kotak yang seharusnya dikerjakan
-                        $totalTarget = $record->kraepelinAnswers()->count();   // contoh: 1350
-
-                        if ($totalTarget === 0) {
-                            return null;
-                        }
-
-                        // Jumlah jawaban benar
-                        $totalCorrect = $record->kraepelinAnswers()
-                            ->where('is_correct', 1)
-                            ->count();
-
-                        // Sama seperti di modal: dibulatkan ke persen terdekat
-                        return (int) round(($totalCorrect / $totalTarget) * 100);
+                        if ($filled === 0) return null;
+                        return (int) round(($correct / $filled) * 100);
                     })
                     ->formatStateUsing(fn ($state) => $state !== null ? $state.'%' : '—'),
+
                 Tables\Columns\IconColumn::make('can_retake')
-                    ->label('Boleh ulang?')
+                    ->label('Ulang?')
                     ->boolean(),
             ])
             ->filters([
@@ -119,7 +133,7 @@ class TestSessionResource extends Resource
             ])
             ->actions([
                 Action::make('allowRetake')
-                    ->label('Izinkan ulang tes')
+                    ->label('Izinkan ulang')
                     ->requiresConfirmation()
                     ->visible(fn (TestSession $record) =>
                         $record->status === 'finished' && ! $record->can_retake
@@ -128,28 +142,22 @@ class TestSessionResource extends Resource
                         $record->update(['can_retake' => true]);
                     }),
 
-                // Action 1: GRAFIK HASIL (Ringan, hanya load summary)
                 Action::make('viewChart')
                     ->label('Grafik')
                     ->icon('heroicon-o-presentation-chart-line')
-                    ->color('info') // Warna biru
+                    ->color('info')
                     ->visible(fn (TestSession $record) => $record->test?->code === 'KRAEPELIN')
                     ->modalHeading('Grafik Stabilitas Kerja')
                     ->modalWidth('7xl')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup')
                     ->modalContent(function (TestSession $record) {
+                        // LOGIKA GRAFIK (Ini sudah benar menurut Anda, jadi kita pertahankan)
                         $perColumn = $record->kraepelinAnswers()
                             ->selectRaw('
                                 column_index,
-                                
-                                /* Menghitung kotak yang SUDAH DIISI saja (tidak null) */
                                 SUM(CASE WHEN user_answer IS NOT NULL THEN 1 ELSE 0 END) as answered,
-
-                                /* Menghitung jawaban Benar */
                                 SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct,
-
-                                /* Menghitung jawaban Salah (hanya jika sudah diisi) */
                                 SUM(CASE WHEN is_correct = 0 AND user_answer IS NOT NULL THEN 1 ELSE 0 END) as wrong
                             ')
                             ->groupBy('column_index')
@@ -162,44 +170,29 @@ class TestSessionResource extends Resource
                         ]);
                     }),
 
-                // Action 2: DETAIL VISUALISASI (Lebih detail, load per kotak)
-                Action::make('viewVisual') // Sesuaikan nama action-nya jika beda
-                    ->label('Detail Visual')
+                Action::make('viewVisual')
+                    ->label('Detail')
                     ->icon('heroicon-o-eye')
-                    ->modalContent(function ($record) {
-                        // 1. Ambil jawaban user menggunakan method answers()->get() agar tidak null
-                        $answersByColumn = $record->answers()->get()->groupBy('column_index');
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false) 
+                    ->modalCancelActionLabel('Tutup')
+                    ->modalContent(function (TestSession $record) { 
+                        $answersByColumn = $record->kraepelinAnswers()
+                            ->orderBy('column_index')
+                            ->orderBy('row_index')
+                            ->get()
+                            ->groupBy('column_index');
 
-                        // 2. LOGIC INJECT ANGKA SOAL
-                        foreach ($answersByColumn as $colIndex => $answers) {
-                            // Ambil kunci jawaban asli dari Template
-                            $sourceNumbers = KraepelinTemplate::getColumnChain((int)$colIndex);
-
-                            foreach ($answers as $index => $ans) {
-                                // Pastikan index ada di range soal
-                                if (isset($sourceNumbers[$index]) && isset($sourceNumbers[$index + 1])) {
-                                    $ans->bottom_number = $sourceNumbers[$index];     // Angka Bawah
-                                    $ans->top_number    = $sourceNumbers[$index + 1]; // Angka Atas
-                                } else {
-                                    $ans->bottom_number = '?';
-                                    $ans->top_number = '?';
-                                }
-                            }
-                        }
-
-                        // 3. Return View
                         return view('filament.modals.kraepelin-visual', [
                             'answersByColumn' => $answersByColumn,
+                            'record'          => $record, 
+                            'session'         => $record, 
                         ]);
-                    })
-                    ->modalWidth('7xl'),
-                Tables\Actions\EditAction::make()->label(''),
+                    }),
+                    
                 Tables\Actions\DeleteAction::make()
                     ->label('')
-                    ->requiresConfirmation()
-                    ->modalHeading('Hapus riwayat tes')
-                    ->modalSubheading('Yakin ingin menghapus riwayat tes ini? Tindakan ini tidak dapat dibatalkan.')
-                    ->modalButton('Ya, hapus'),
+                    ->requiresConfirmation(),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

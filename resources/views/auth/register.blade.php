@@ -25,8 +25,9 @@
                 </svg>
             </div>
 
-            <h1 class="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-sky-500">
-                Buat Akun Baru
+            <h1 class="text-3xl font-black leading-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-sky-500">
+                Recruitment Tes <br>
+                PT. Indomatsumoto P&D
             </h1>
             <p class="mt-2 text-sm text-slate-600">
                 Bergabung untuk mengikuti tes online

@@ -11,8 +11,7 @@
 <body class="font-sans antialiased text-slate-900">
 
 <!-- Background -->
-<div class="min-h-screen bg-gradient-to-br from-indigo-200 via-indigo-50 to-sky-200 relative overflow-hidden flex items-center justify-center">
-
+<div class="min-h-screen bg-gradient-to-br from-indigo-200 via-indigo-50 to-sky-200 relative overflow-hidden flex items-center justify-center py-10">
     <!-- Blur blobs -->
     <div class="absolute -top-24 -left-24 w-96 h-96 bg-indigo-400 rounded-full blur-3xl opacity-40"></div>
     <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-sky-400 rounded-full blur-3xl opacity-40"></div>
@@ -20,16 +19,17 @@
     <div class="relative z-10 w-full max-w-md px-6">
 
         <!-- Logo & Title -->
-        <div class="text-center mb-8">
-            <div class="mx-auto h-16 w-16 bg-white rounded-2xl flex items-center justify-center shadow-lg mb-4">
+        <div class="text-center mb-6">
+            <div class="mx-auto h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-lg mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                         d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                 </svg>
             </div>
 
-            <h1 class="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-sky-500">
-                Online HR Test
+            <h1 class="text-3xl font-black leading-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-sky-500">
+                Recruitment Tes <br>
+                PT. Indomatsumoto P&D
             </h1>
             <p class="mt-2 text-sm text-slate-600">
                 Silakan masuk untuk memulai ujian
