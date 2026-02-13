@@ -63,20 +63,27 @@ class KraepelinTestController extends Controller
         $digitRows = 28; // 28 angka per kolom di template
         $rows     = 27;  // 27 kotak operasi
 
+        $data = [];
+        $now = now();
+
         for ($col = 1; $col <= $columns; $col++) {
 
-            $chain = KraepelinTemplate::getColumnChain($col); // 28 angka bottom→top
+            $chain = KraepelinTemplate::getColumnChain($col);
 
             for ($row = 1; $row <= $rows; $row++) {
-                KraepelinAnswer::create([
+                $data[] = [
                     'test_session_id' => $session->id,
                     'column_index'    => $col,
                     'row_index'       => $row,
                     'bottom_number'   => $chain[$row - 1],
                     'top_number'      => $chain[$row],
-                ]);
+                    'created_at'      => $now,
+                    'updated_at'      => $now,
+                ];
             }
         }
+
+        KraepelinAnswer::insert($data);
 
         return redirect()->route('kraepelin.show', $session);
     }

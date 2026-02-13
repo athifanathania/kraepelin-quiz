@@ -43,6 +43,10 @@
             font-family: 'Poppins', sans-serif !important;
             border-radius: 1rem !important; /* Membuat sudut popup lebih bulat (rounded-xl) */
         }
+
+        .kraepelin-container {
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -400,11 +404,16 @@
 
         function scrollToActiveColumn() {
             const wrapper = document.getElementById(`col-wrapper-${activeCol}`);
-            if (wrapper && scrollArea) {
-                // Scroll agar kolom aktif berada di tengah layar
-                const scrollLeft = wrapper.offsetLeft - (scrollArea.clientWidth / 2) + (wrapper.clientWidth / 2);
-                scrollArea.scrollTo({ left: scrollLeft, behavior: 'smooth' });
-            }
+            if (!wrapper || !scrollArea) return;
+
+            const scrollLeft =
+                wrapper.offsetLeft -
+                (scrollArea.clientWidth / 2) +
+                (wrapper.clientWidth / 2);
+
+            requestAnimationFrame(() => {
+                scrollArea.scrollLeft = scrollLeft;
+            });
         }
 
         function focusBottomCellOfColumn(col) {
@@ -425,8 +434,8 @@
                 updateActiveColumnLabel();
                 updateTimerLabel();
                 updateColumnVisuals();
-                scrollToActiveColumn();
                 focusBottomCellOfColumn(activeCol);
+                scrollToActiveColumn();
             } else {
                 finishTest();
             }
@@ -479,63 +488,61 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            const inputs = document.querySelectorAll('.kraepelin-input');
-
-            inputs.forEach(function (input) {
-                // INPUT EVENT
-                input.addEventListener('input', function (e) {
-                    let value = input.value.replace(/[^0-9]/g, ''); // Hanya angka
-                    if (value.length > 1) value = value.slice(-1); // Ambil digit terakhir
-                    
-                    input.value = value;
-
-                    const col = parseInt(input.dataset.col, 10);
-                    const row = parseInt(input.dataset.row, 10);
-
-                    // Kirim Data
-                    sendAnswerToServer(col, row, value);
-
-                    // Auto Move Up
-                    if (value.length === 1) {
-                        const next = document.querySelector(`.kraepelin-input[data-col="${col}"][data-row="${row + 1}"]`);
-                        
-                        if (next) {
-                            next.focus();
-
-                            // --- BAGIAN BARU DITAMBAHKAN DI SINI ---
-                            // Paksa scroll agar input ada di TENGAH layar (tidak ketutup header)
-                            setTimeout(() => {
-                                next.scrollIntoView({
-                                    behavior: 'smooth',
-                                    block: 'center',  // Kuncinya disini: center = tengah
-                                    inline: 'nearest'
-                                });
-                            }, 100); // Delay 100ms agar smooth
-                            // ---------------------------------------
-                        }
-                    }
-                });
-
-                // KEYDOWN (BACKSPACE)
-                input.addEventListener('keydown', function (e) {
-                    if (e.key === 'Backspace') {
-                        if (input.value !== '') return; // Hapus angka dulu
-
-                        // Pindah ke bawah
-                        const col = parseInt(input.dataset.col, 10);
-                        const row = parseInt(input.dataset.row, 10);
-                        const prev = document.querySelector(`.kraepelin-input[data-col="${col}"][data-row="${row - 1}"]`);
-                        
-                        if (prev) {
-                            e.preventDefault();
-                            prev.focus();
-                        }
-                    }
-                });
-            });
-
-            // Start Logic
+            // Mulai Timer
             startColumnTimer();
+        });
+
+        // EVENT DELEGATION: Tangkap event input secara global
+        document.addEventListener('input', function (e) {
+            // Pastikan yang di-input adalah kotak kraepelin
+            if (!e.target.matches('.kraepelin-input')) return;
+
+            let input = e.target;
+            let value = input.value.replace(/[^0-9]/g, ''); // Hanya angka
+            if (value.length > 1) value = value.slice(-1); // Ambil digit terakhir
+            
+            input.value = value;
+
+            const col = parseInt(input.dataset.col, 10);
+            const row = parseInt(input.dataset.row, 10);
+
+            // Kirim Data
+            sendAnswerToServer(col, row, value);
+
+            // Auto Move Up
+            if (value.length === 1) {
+                const next = document.querySelector(`.kraepelin-input[data-col="${col}"][data-row="${row + 1}"]`);
+                
+                if (next) {
+                    next.focus();
+                    setTimeout(() => {
+                        next.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                            inline: 'nearest'
+                        });
+                    }, 100);
+                }
+            }
+        });
+
+        // EVENT DELEGATION: Tangkap event keydown (Backspace)
+        document.addEventListener('keydown', function (e) {
+            if (!e.target.matches('.kraepelin-input')) return;
+
+            let input = e.target;
+            if (e.key === 'Backspace') {
+                if (input.value !== '') return; // Hapus angka dulu, baru pindah jika sudah kosong
+
+                const col = parseInt(input.dataset.col, 10);
+                const row = parseInt(input.dataset.row, 10);
+                const prev = document.querySelector(`.kraepelin-input[data-col="${col}"][data-row="${row - 1}"]`);
+                
+                if (prev) {
+                    e.preventDefault();
+                    prev.focus();
+                }
+            }
         });
     </script>
 </body>
